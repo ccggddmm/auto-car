@@ -10,7 +10,7 @@ import struct
 import pandas as pd
 from PIL import Image
 import threading
-import predict
+import server.predict
 import tensorflow as tf
 PATH = "dataset"
 class Image_Server:
@@ -21,7 +21,8 @@ class Image_Server:
         self.angle = 0 # 0 = middle, 1 = left, 2 = right
         self.dataset_filepath = []
         self.dataset_angle = []
-
+        self.prediction = predict.Prediction()
+        self.graph = tf.get_default_graph()
     def run(self):
         self.server_socket.listen(0)
         print("image server:start")
@@ -50,10 +51,13 @@ class Image_Server:
                     stream_bytes = stream_bytes[4:]
 
                     image = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8),  cv2.COLOR_BGR2RGB)
+                    #new thread for predicting
+                    t_predict_image = threading.Thread(target=self.image_predict, args=(image,))
+                    t_predict_image.start()
+
                     # show current frame (show video in big picture)
                     cv2.imshow('view', image)
-                    #new thread for saving image
-                    _thread.start_new_thread(self.save_image, (image,angle))
+
                     key = cv2.waitKey(1)
                     if key == 27:
                         break
@@ -69,19 +73,11 @@ class Image_Server:
             print('connection closed')
             sys.exit()
     def image_predict(self,image):
+        global action_server
         with self.graph.as_default():
-            self.prediction.predict(image)
-    def save_image(self,image,angle):
-        # save file
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        now = datetime.datetime.now()
-        im = Image.fromarray(image)
-        filename = str(now.year) + "-" + str(now.month) + "-" + str(now.day) + "-" + str(now.hour) + "-" + str(
-            now.minute) + "-" + str(now.second) + " " + str(now.microsecond)
-        filePath = PATH + "\\" + filename + ".jpeg"
-        im.save(filePath)
-        self.dataset_filepath.append(filePath)
-        self.dataset_angle.append(angle)
+            steering_angle = self.prediction.predict(image)
+            action_server.send_action(steering_angle)
+
 
 class Action_Server:
     def __init__(self):
@@ -93,12 +89,14 @@ class Action_Server:
         self.server_socket.bind(server_address)
 
         self.angle = -1
+
         self.MID = 0
         self.LEFT = 1
         self.RIGHT = 2
         self.UP = 3
         self.DOWN = 4
 
+        self._value_lock = threading.Lock()
 
     def run(self):
         self.server_socket.listen(0)
@@ -158,12 +156,14 @@ class Action_Server:
                     print("RIGHT_release")
 
     def send_action(self,action):
-        self.connection.write(struct.pack('i',520520520)) #start lable
-        self.connection.write(struct.pack('i',action))
-        self.connection.write(struct.pack('i',521521521)) #start lable
-        self.connection.flush()
+        with self._value_lock:
+            self.connection.write(struct.pack('i',520520520)) #start lable
+            self.connection.write(struct.pack('f',action))
+            self.connection.write(struct.pack('i',521521521)) #end lable
+            self.connection.flush()
 
 def main():
+    global image_server,action_server
     image_server = Image_Server()
     action_server = Action_Server()
 
