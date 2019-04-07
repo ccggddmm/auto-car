@@ -5,12 +5,12 @@ import time
 import picamera
 import threading
 
-from controlTest import control
+from controler import control
 
 SERVER_IP = "10.0.3.154"
 
 
-class Image_Client:
+class ImageClient:
     def __init__(self):
         self.server_address = (SERVER_IP,8123)
         self.clinet_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -47,7 +47,7 @@ class Image_Client:
             self.clinet_socket.close()
             print ('image client:connection closed')
             
-class Action_Client:
+class ActionClient:
     #this client used to recive action from the srever 
     def __init__(self):
         self.server_address = (SERVER_IP,8124)
@@ -71,7 +71,7 @@ class Action_Client:
                 last = stream_bytes.find(struct.pack('i',521521521)) 
                 print("first:{} \n last:{}\n".format(first,last))
                 if first != -1 and last != -1:
-                    action = struct.unpack('i',stream_bytes[first+4:last])[0]
+                    action = struct.unpack('f',stream_bytes[first+4:last])[0]
                     stream_bytes = stream_bytes[last+4:]
                     print(action)
                     self.do_action(action)
@@ -93,12 +93,14 @@ class Action_Client:
             control.turn_back()
         elif action == self.DOWN:
             control.speed_down()
+        else:
+            control.set_angle(action)
    
 
 
 if __name__ == '__main__':
-    image_client = Image_Client()
-    action_client = Action_Client()
+    image_client = ImageClient()
+    action_client = ActionClient()
     t_img_client = threading.Thread(target=image_client.run)
     t_act_client = threading.Thread(target=action_client.run)
     

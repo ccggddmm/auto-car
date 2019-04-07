@@ -55,12 +55,16 @@ class CarControl:
     
     def _set_angle(self, angle):
         ''' angle: -1 - 1 (double) -1 - 0 right, 0 - 1 left'''
-        if angle < -1 or angle > 1:
-            print("invalid angle!")
-            return 
+        if angle < -1:
+            angle = -1
+        if angle > 1:
+            angle = 1
         print("Set angle: {}".format(angle))
         self._angle = angle
         self.servo.duty_cycle =  int(self.MID + self.MAX_TURN*angle) 
+        
+    def set_angle(self, angle):
+        self._set_angle(angle)
         
     def get_angle(self):
         return self._angle
