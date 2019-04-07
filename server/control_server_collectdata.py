@@ -1,7 +1,6 @@
 import _thread
 import datetime
 import sys
-import time
 import cv2
 import numpy as np
 import socket
@@ -10,8 +9,6 @@ import struct
 import pandas as pd
 from PIL import Image
 import threading
-import server.predict
-import tensorflow as tf
 PATH = "dataset"
 class Image_Server:
     def __init__(self):

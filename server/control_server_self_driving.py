@@ -1,16 +1,12 @@
-import _thread
-import datetime
 import sys
-import time
 import cv2
 import numpy as np
 import socket
 import pygame
 import struct
 import pandas as pd
-from PIL import Image
 import threading
-import server.predict
+import server.predict as predict
 import tensorflow as tf
 PATH = "dataset"
 class Image_Server:
