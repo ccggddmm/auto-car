@@ -9,6 +9,8 @@ import struct
 import pandas as pd
 from PIL import Image
 import threading
+from multiprocessing import Process as worker
+
 PATH = "dataset"
 class Image_Server:
     def __init__(self):
@@ -37,9 +39,11 @@ class Image_Server:
                 last_angle = stream_bytes.find(struct.pack('i',521521521))
                 if first != -1 and last != -1 and first_angle != -1 and last_angle!=-1:
                     jpg = stream_bytes[first:last + 2]
-                    angle = stream_bytes[first_angle+4:last_angle]
+                    angle = stream_bytes[first_angle+4:last_angle-4]
+                    speed = stream_bytes[first_angle+8:last_angle]
                     angle = struct.unpack('f',angle)[0]
-                    # print(angle)
+                    speed = struct.unpack('f',speed)[0]
+                    # print("angle:{},speed:{}".format(angle,speed))
                     if last > last_angle:
                         stream_bytes = stream_bytes[last+2:]
                     else:
@@ -50,7 +54,8 @@ class Image_Server:
                     # show current frame (show video in big picture)
                     cv2.imshow('view', image)
                     #new thread for saving image
-                    _thread.start_new_thread(self.save_image, (image,angle))
+                    if speed>0: #only store data when speed > 0
+                        _thread.start_new_thread(self.save_image, (image,angle))
                     key = cv2.waitKey(1)
                     if key == 27:
                         break
@@ -111,8 +116,15 @@ class Action_Server:
         pygame.display.set_mode((display_width, display_height))
         pygame.display.set_caption('Super Manless Car')
         # sending action to raspberry pi
+        fps = 120
+        clock = pygame.time.Clock()
+        clock.tick(fps)
+
         try:
             while True:
+                clock.tick(fps)
+
+                # pygame.time.wait(0)
                 self.key_event()
         except Exception as e:
             print(e)
@@ -156,7 +168,7 @@ class Action_Server:
 
     def send_action(self,action):
         self.connection.write(struct.pack('i',520520520)) #start lable
-        self.connection.write(struct.pack('i',action))
+        self.connection.write(struct.pack('f',action))
         self.connection.write(struct.pack('i',521521521)) #start lable
         self.connection.flush()
 
@@ -164,10 +176,14 @@ def main():
     image_server = Image_Server()
     action_server = Action_Server()
 
-    t_img_server = threading.Thread(target=image_server.run)
-    t_act_server = threading.Thread(target=action_server.run)
+    t_img_server = worker(target=image_server.run)
+    t_act_server = worker(target=action_server.run)
 
     t_img_server.start()
     t_act_server.start()
+
+    t_img_server.join()
+    t_act_server.join()
+
 if __name__ == '__main__':
     main()
