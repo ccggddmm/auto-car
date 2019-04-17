@@ -1,5 +1,6 @@
 import _thread
 import datetime
+import os
 import sys
 import cv2
 import numpy as np
@@ -11,7 +12,7 @@ from PIL import Image
 import threading
 from multiprocessing import Process as worker
 
-PATH = "dataset"
+PATH = "dataset/"
 class Image_Server:
     def __init__(self):
         server_address = ('', 8123)
@@ -79,8 +80,8 @@ class Image_Server:
         now = datetime.datetime.now()
         im = Image.fromarray(image)
         filename = str(now.year) + "-" + str(now.month) + "-" + str(now.day) + "-" + str(now.hour) + "-" + str(
-            now.minute) + "-" + str(now.second) + " " + str(now.microsecond)
-        filePath = PATH + "\\" + filename + ".jpeg"
+            now.minute) + "-" + str(now.second) + " " + str(now.microsecond) + ".jpeg"
+        filePath = os.path.join(PATH, filename)
         im.save(filePath)
         self.dataset_filepath.append(filePath)
         self.dataset_angle.append(angle)
